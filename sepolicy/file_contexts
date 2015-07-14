@@ -17,11 +17,16 @@
 
 # NFC
 /dev/bcm2079x									u:object_r:nfc_device:s0
+/dev/pn547 u:object_r:nfc_device:s0
 /data/bcmnfc(/.*)?								u:object_r:nfc_data_file:s0
 
 # MMC
 /dev/block/mmcblk0(.*)								u:object_r:mmc_block_device:s0
 /dev/block/mmcblk1(.*)								u:object_r:mmc_block_device:s0
+
+# SEC
+/sys/devices/virtual/sec(/.*)?							u:object_r:sysfs_sec:s0
+/sys/class/sec(/.*)?									u:object_r:sysfs_sec:s0
 
 # Sensors
 /efs/hw_offset									u:object_r:sensors_efs_file:s0
@@ -45,3 +50,6 @@
 
 # Sensorhubservice
 /system/bin/sensorhubservice							u:object_r:sensorhubservice_exec:s0
+
+# Domain
+/system/bin/macloader                                   u:object_r:macloader_exec:s0

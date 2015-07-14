@@ -38,6 +38,6 @@ PRODUCT_GMS_CLIENTID_BASE := android-samsung
 
 PRODUCT_BUILD_PROP_OVERRIDES += TARGET_DEVICE=ks01lte \
         PRODUCT_NAME=ks01ltexx \
-        BUILD_FINGERPRINT=samsung/ks01ltexx/ks01lte:5.0.1/LRX22C/I9506XXUDOA6:user/release-keys \
-        PRIVATE_BUILD_DESC="ks01ltexx-user 5.0.1 LRX22C I9506XXUDOA6 release-keys"
+        BUILD_FINGERPRINT=samsung/ks01ltexx/ks01ltexx:5.1.1/LMY48G/I9506XXUDOD3:user/release-keys \
+        PRIVATE_BUILD_DESC="ks01ltexx-user 5.1.1 LMY48G I9506XXUDOD3 release-keys"
 

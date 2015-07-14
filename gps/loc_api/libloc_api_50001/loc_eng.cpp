@@ -1,4 +1,4 @@
-/* Copyright (c) 2009-2014, The Linux Foundation. All rights reserved.
+/* Copyright (c) 2009-2013, The Linux Foundation. All rights reserved.
  *
  * Redistribution and use in source and binary forms, with or without
  * modification, are permitted provided that the following conditions are
@@ -84,7 +84,7 @@
 #define SAP_CONF_FILE            "/etc/sap.conf"
 #endif
 
-#define XTRA1_GPSONEXTRA "xtra1.gpsonextra.net"
+#define XTRA1_GPSONEXTRA         "xtra1.gpsonextra.net"
 
 using namespace loc_core;
 
@@ -120,7 +120,7 @@ static loc_param_s_type loc_parameter_table[] =
   {"QUIPC_ENABLED",                  &gps_conf.QUIPC_ENABLED,                  NULL, 'n'},
   {"LPP_PROFILE",                    &gps_conf.LPP_PROFILE,                    NULL, 'n'},
   {"A_GLONASS_POS_PROTOCOL_SELECT",  &gps_conf.A_GLONASS_POS_PROTOCOL_SELECT,  NULL, 'n'},
-  {"SENSOR_PROVIDER",                &sap_conf.SENSOR_PROVIDER,                NULL, 'n'},
+  {"XTRA_VERSION_CHECK",             &gps_conf.XTRA_VERSION_CHECK,                  NULL, 'n'},
   {"XTRA_SERVER_1",                  &gps_conf.XTRA_SERVER_1,                  NULL, 's'},
   {"XTRA_SERVER_2",                  &gps_conf.XTRA_SERVER_2,                  NULL, 's'},
   {"XTRA_SERVER_3",                  &gps_conf.XTRA_SERVER_3,                  NULL, 's'}
@@ -166,9 +166,6 @@ static void loc_default_parameters(void)
 
    /*By default no positioning protocol is selected on A-GLONASS system*/
    gps_conf.A_GLONASS_POS_PROTOCOL_SELECT = 0;
-
-   /* default provider is SSC */
-   sap_conf.SENSOR_PROVIDER = 1;
 }
 
 // 2nd half of init(), singled out for
@@ -506,20 +503,18 @@ struct LocEngLppConfig : public LocMsg {
 struct LocEngSensorControlConfig : public LocMsg {
     LocEngAdapter* mAdapter;
     const int mSensorsDisabled;
-    const int mSensorProvider;
     inline LocEngSensorControlConfig(LocEngAdapter* adapter,
-                                     int sensorsDisabled, int sensorProvider) :
-        LocMsg(), mAdapter(adapter), mSensorsDisabled(sensorsDisabled),
-        mSensorProvider(sensorProvider)
+                                     int sensorsDisabled) :
+        LocMsg(), mAdapter(adapter), mSensorsDisabled(sensorsDisabled)
     {
         locallog();
     }
     inline virtual void proc() const {
-        mAdapter->setSensorControlConfig(mSensorsDisabled, mSensorProvider);
+        mAdapter->setSensorControlConfig(mSensorsDisabled);
     }
     inline  void locallog() const {
-        LOC_LOGV("LocEngSensorControlConfig - Sensors Disabled: %d, Sensor Provider: %d",
-                 mSensorsDisabled, mSensorProvider);
+        LOC_LOGV("LocEngSensorControlConfig - Sensors Disabled: %d",
+                 mSensorsDisabled);
     }
     inline virtual void log() const {
         locallog();
@@ -764,10 +759,7 @@ void LocEngReportPosition::proc() const {
         }
 
         if (locEng->generateNmea &&
-            mLocation.position_source == ULP_LOCATION_IS_FROM_GNSS &&
-            mTechMask & (LOC_POS_TECH_MASK_SATELLITE |
-                         LOC_POS_TECH_MASK_SENSORS |
-                         LOC_POS_TECH_MASK_HYBRID))
+            mLocation.position_source == ULP_LOCATION_IS_FROM_GNSS)
         {
             unsigned char generate_nmea = reported &&
                                           (mStatus != LOC_SESS_FAILURE);
@@ -927,7 +919,7 @@ LocEngReportXtraServer::LocEngReportXtraServer(void* locEng,
     if( gps_conf.XTRA_SERVER_3[0] != '\0' ) {
         url3 = &gps_conf.XTRA_SERVER_3[0];
     }
-    // copy non xtra1.gpsonextra.net URLs into the forwarding buffer. 
+    // copy non xtra1.gpsonextra.net URLs into the forwarding buffer.
     if( NULL == strcasestr(url1, XTRA1_GPSONEXTRA) ) {
         strlcpy(cptr, url1, mMaxLen + 1);
         cptr += mMaxLen + 1;
@@ -1383,7 +1375,7 @@ struct LocEngAtlOpenSuccess : public LocMsg {
         mStateMachine->onRsrcEvent(RSRC_GRANTED);
     }
     inline void locallog() const {
-        LOC_LOGV("LocEngAtlOpenSuccess agps type: %s\n  apn: %s\n"
+        LOC_LOGV("LocEngAtlClosed agps type: %s\n  apn: %s\n"
                  "  bearer type: %s",
                  loc_get_agps_type_name(mStateMachine->getType()),
                  mAPN,
@@ -1590,8 +1582,7 @@ static int loc_eng_reinit(loc_eng_data_s_type &loc_eng_data)
         LocEngAdapter* adapter = loc_eng_data.adapter;
         adapter->sendMsg(new LocEngSuplVer(adapter, gps_conf.SUPL_VER));
         adapter->sendMsg(new LocEngLppConfig(adapter, gps_conf.LPP_PROFILE));
-        adapter->sendMsg(new LocEngSensorControlConfig(adapter, sap_conf.SENSOR_USAGE,
-                                                       sap_conf.SENSOR_PROVIDER));
+        adapter->sendMsg(new LocEngSensorControlConfig(adapter, sap_conf.SENSOR_USAGE));
         adapter->sendMsg(new LocEngAGlonassProtocol(adapter, gps_conf.A_GLONASS_POS_PROTOCOL_SELECT));
 
         /* Make sure at least one of the sensor property is specified by the user in the gps.conf file. */
@@ -1907,7 +1898,7 @@ int loc_eng_inject_location(loc_eng_data_s_type &loc_eng_data, double latitude,
     ENTRY_LOG_CALLFLOW();
     INIT_CHECK(loc_eng_data.adapter, return -1);
     LocEngAdapter* adapter = loc_eng_data.adapter;
-    if(adapter->mSupportsPositionInjection)
+    if(!adapter->mCPIEnabled)
     {
         adapter->sendMsg(new LocEngInjectLocation(adapter, latitude, longitude,
                                                   accuracy));
@@ -2123,9 +2114,9 @@ void loc_eng_agps_init(loc_eng_data_s_type &loc_eng_data, AGpsExtCallbacks* call
                                                       AGPS_TYPE_SUPL,
                                                       false);
 
-        if (adapter->mSupportsAgpsRequests) {
-            loc_eng_data.adapter->sendMsg(new LocEngDataClientInit(&loc_eng_data));
+        loc_eng_data.adapter->sendMsg(new LocEngDataClientInit(&loc_eng_data));
 
+        if (adapter->mAgpsEnabled) {
             loc_eng_dmn_conn_loc_api_server_launch(callbacks->create_thread_cb,
                                                    NULL, NULL, &loc_eng_data);
         }

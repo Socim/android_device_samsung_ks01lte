@@ -182,7 +182,6 @@ static int write_leds(const struct led_config *led)
 
     char blink[32];
     int count, err;
-    int color;
 
     if (led == NULL)
         led = &led_off;
@@ -217,7 +216,7 @@ static int set_light_leds(struct light_state_t const *state, int type)
     ALOGD("%s: type=%d, color=0x%010x, fM=%d, fOnMS=%d, fOffMs=%d.", __func__,
           type, state->color,state->flashMode, state->flashOnMS, state->flashOffMS);
 
-    if (type < 0 || type >= 2)
+    if (type < 0 || (unsigned int)type >= sizeof(g_leds)/sizeof(g_leds[0]))
         return -EINVAL;
 
     /* type is one of:
@@ -240,7 +239,7 @@ static int set_light_leds(struct light_state_t const *state, int type)
     default:
         return -EINVAL;
     }
-    
+
     led->color = state->color & 0x00ffffff;
 
     if (led->color > 0) {
@@ -305,7 +304,6 @@ static int set_light_leds_attention(struct light_device_t *dev,
          * just makes for a slightly-dimmer LED. */
         if (fixed.flashOnMS > 0 && fixed.flashOffMS == 0)
             fixed.flashMode = LIGHT_FLASH_NONE;
-	    fixed.color = 0x000000ff;
         break;
     }
 
@@ -356,7 +354,7 @@ struct hw_module_t HAL_MODULE_INFO_SYM = {
     .version_major = 1,
     .version_minor = 0,
     .id = LIGHTS_HARDWARE_MODULE_ID,
-    .name = "I9506 Lights Module",
+    .name = "D2 Lights Module",
     .author = "The CyanogenMod Project",
     .methods = &lights_module_methods,
 };

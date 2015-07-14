@@ -325,3 +325,14 @@ bin/mm-pp-daemon
 vendor/lib/libdisp-aba.so
 -vendor/lib/libmm-abl.so
 vendor/lib/libmm-abl-oem.so
+
+# missing
+bin/ds_fmc_appd
+bin/rfs_access
+etc/permissions/com.qualcomm.location.xml
+etc/thermald-8974.conf
+etc/wifi/bcmdhd_apsta.bin_a0
+etc/wifi/bcmdhd_mfg.bin_a0
+etc/wifi/bcmdhd_sta.bin_a0
+etc/wifi/cred.conf
+etc/wifi/WCNSS_qcom_cfg.ini
